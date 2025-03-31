@@ -6,6 +6,7 @@ from selenium.webdriver.common.keys import Keys
 from scraper import find_prof_name,get_author_profile_link,get_paper_links,get_paper_description
 import time 
 from selenium.webdriver.chrome.options import Options
+from mongo_driver import mongo_helper
 
 
 
@@ -16,6 +17,12 @@ class bot:
         self.options.add_experimental_option('useAutomationExtension', False) 
         self.options.add_argument('--disable-blink-features=AutomationControlled')
         self.driver = webdriver.Chrome(options=self.options)
+        
+    def initiate(self):
+        self.driver = webdriver.Chrome(options=self.options)
+    
+    def teardown(self):
+        self.driver.quit()
 
 
 class prof_bot(bot):
@@ -90,59 +97,85 @@ class prof_bot(bot):
 
 class scholar_bot(bot):
     
-    def __init__(self,google,gscholar,fn,ln):
+    def __init__(self,google,gscholar,prof_list):
         super().__init__()
-        self.url =google
+        self.google =google
         self.gscholar = gscholar
+        self.prof_list = prof_list
         self.searchbox = "APjFqb"
         self.atag = "zReHs"
         self.showmoreBtn = "gsc_bpf_more"
         self.paperLink = "gsc_a_at"
         self.descriptionId = "gsc_oci_descr"
         self.titleClass = "gsc_oci_title_link"
-        self.fn = fn
-        self.ln = ln
+        self.mongoClient = mongo_helper()
         
-        
-    def get_single_prof_Detail(self):
-        gscholar_link = self.navigate_search_page()
-        self.driver.get(gscholar_link)
-        time.sleep(2)
-        self.check_show_more()
-        paper_list = get_paper_links(self.driver.page_source,self.paperLink)
-        self.get_paper_description(paper_list)
-        
+
+
+    def insert_prof_details(self):
+        for prof in self.prof_list:
+            fn,ln = prof.split(' ')
+            prof_document = {
+                "professor_name":prof,
+                "details":self.get_single_prof_Detail(fn,ln)
+                }
+            self.mongoClient.insert_profs(prof_document)
+            self.teardown()
+            self.initiate()
+
+    def get_single_prof_Detail(self,fn,ln):
+        gscholar_link = self.navigate_search_page(fn,ln)
+        if gscholar_link is not None:
+            self.driver.get(gscholar_link)
+            time.sleep(1)
+            self.check_show_more()
+            paper_list = get_paper_links(self.driver.page_source,self.paperLink)
+            return self.get_paper_details(paper_list)
+        else:
+            print("Professor not Found")
+            
         
         
     
-    def navigate_search_page(self):
-        self.driver.get(self.url)
+    def navigate_search_page(self,fn,ln):
+        self.driver.get(self.google)
         self.driver.maximize_window()
         searchbox = self.driver.find_element(By.ID,self.searchbox)
-        searchbox.send_keys(f"{self.fn} {self.ln} Arizona State University Google Scholar")
+        searchbox.send_keys(f"{fn} {ln} Arizona State University Google Scholar")
         searchbox.send_keys(Keys.RETURN)
         time.sleep(1)
         gscholar_link = get_author_profile_link(self.driver.page_source,self.atag)
         return gscholar_link
         
     def check_show_more(self):
-        while True:
-            shw_more = self.driver.find_element(By.ID,self.showmoreBtn)
-            print(shw_more.is_enabled())
-            if shw_more.is_enabled():
-                shw_more.click()
-                time.sleep(1)
-            else:
-                break
+        try:
+            ele = WebDriverWait(self.driver,10).until(EC.presence_of_element_located(By.ID,self.showmoreBtn))
+        except:
+            print("Element not found")
+        finally:
+            while True:
+                shw_more = self.driver.find_element(By.ID,self.showmoreBtn)
+                print(shw_more.is_enabled())
+                if shw_more.is_enabled():
+                    shw_more.click()
+                    time.sleep(1)
+                else:
+                    break
             
-    def get_paper_description(self,paper_list):
+    def get_paper_details(self,paper_list):
         p_list = []
+        print('length of papers:', len(paper_list))
+        i=0
         for paper in paper_list:
+            i+=1
             self.driver.get(self.gscholar+paper)
-            time.sleep(1)
+            time.sleep(5)
             paper_Det = get_paper_description(self.driver.page_source,self.descriptionId,self.titleClass)
-            print(paper_Det)
             p_list.append(paper_Det)
+            if i ==3:
+                return p_list
+        return p_list
+            
         
         
     def testground(self):

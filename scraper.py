@@ -1,5 +1,5 @@
 from bs4 import BeautifulSoup
-
+import re
 
 def find_prof_name(html_list):
     prof_list = []
@@ -14,7 +14,13 @@ def find_prof_name(html_list):
 def get_author_profile_link(html,className):
     soup = BeautifulSoup(html,features='html.parser')
     atag = soup.find_all("a",{"class":className},href=True)
-    return atag[0]['href']
+    gscholar_link = atag[0]['href']
+    pattern = r"^(https?:\/\/scholar\.google\.com\/)"
+    print("link",gscholar_link)
+    if re.match(pattern,gscholar_link):
+        return gscholar_link
+    else:
+        return None
 
 def get_paper_links(html,className):
     soup = BeautifulSoup(html,features='html.parser')
@@ -25,5 +31,7 @@ def get_paper_description(html,descriptionId,titleClass):
     soup = BeautifulSoup(html,features='html.parser')
     description = soup.find("div",{"id":descriptionId})
     title = soup.find("a",{"class":titleClass},href=True)
-    return { "description": description.text,"title":title.text,"paperLink":title['href']}
+    return { "description": description.text if description is not None else '',
+            "title": title.text if title is not None else '',
+            "paperLink":title['href'] if title is not None else ''}
     
