@@ -1,22 +1,50 @@
-from bot import prof_bot,scholar_bot
-from scraper import find_prof_name
+from driver.bot import scholar_bot
+from driver.bot import prof_bot
 from dotenv import load_dotenv
+from mongo_driver import mongo_helper
+import random
 import os
+import time
+import argparse
+import datetime
+
+parser = argparse.ArgumentParser()
+parser.add_argument("-n","--number",help="Number of times to run the Paper details scraper")
+args = parser.parse_args()
 
 
 
 load_dotenv()
 
+print("Start time:",datetime.datetime.now())
+
 MSN_URL = os.environ.get('MSN_FACULTY_PAGE')
 GOOGLE= os.environ.get('GOOGLE')
 GSCHOLAR = os.environ.get('GOOGLE_SCHOLAR')
 
-surfer = prof_bot()
-prof_list = surfer.get_prof_site(MSN_URL)
-print(prof_list)
+def scrape_prof_names():
+    surfer = prof_bot()
+    prof_list = surfer.get_prof_site(MSN_URL)
+    print(prof_list)
 
+def scrape_paper_list():
+    mc = mongo_helper()
+    scholar = scholar_bot(GOOGLE,GSCHOLAR,mc)
+    scholar.insert_paper_links()
+    
+# scrape_paper_list()
+def scrape_paper_details():
+    mc = mongo_helper()
+    scholar = scholar_bot(GOOGLE,GSCHOLAR,mc)
+    for i in range(int(args.number)):
+        x = scholar.random_paper_insert()
+        if x == False:
+            break
+        time.sleep(random.uniform(120,180))
+    mc.client.close()
+    scholar.driver.quit()
+scrape_paper_details()
 
-scholar = scholar_bot(GOOGLE,GSCHOLAR,prof_list)
-scholar.insert_prof_details()
+print("End time:",datetime.datetime.now())
 # scholar.testground()
 # surfer.testground(MSN_URL)

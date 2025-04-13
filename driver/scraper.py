@@ -15,7 +15,7 @@ def get_author_profile_link(html,className):
     soup = BeautifulSoup(html,features='html.parser')
     atag = soup.find_all("a",{"class":className},href=True)
     gscholar_link = atag[0]['href']
-    pattern = r"^(https?:\/\/scholar\.google\.com\/)"
+    pattern = r"^(https?:\/\/scholar\.google\.[a-z.]+\/)"
     print("link",gscholar_link)
     if re.match(pattern,gscholar_link):
         return gscholar_link
