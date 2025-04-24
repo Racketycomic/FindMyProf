@@ -2,7 +2,7 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.keys import Keys
 import time
-from mongo_driver import mongo_helper
+from mongo_driver.mongo_driver import mongo_bot_helper
 from driver.scraper import find_prof_name, get_author_profile_link, get_paper_description, get_paper_links
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
@@ -19,7 +19,7 @@ class bot:
         # self.options.add_experimental_option("detach",True)
         self.options.add_argument("--headless=new")
         self.driver = webdriver.Chrome(options=self.options)
-        self.mongoClient = mongo_helper()
+        self.mongoClient = mongo_bot_helper()
         
         
 
@@ -113,6 +113,7 @@ class scholar_bot(bot):
             self.mongoClient = mc
 
     
+    
     def insert_paper_links(self):
         prof_list = self.mongoClient.get_prof_list()
         print("Inside insert",prof_list)
@@ -130,11 +131,7 @@ class scholar_bot(bot):
         print("Insert get paper")
         gscholar_link = self.navigate_search_page(fn,ln)
         if gscholar_link is not None:
-            self.driver.get(gscholar_link)
-            time.sleep(1)
-            self.check_show_more()
-            paper_list = get_paper_links(self.driver.page_source,self.paperLink)
-            return paper_list
+            return self.get_papers_by_authorLink(gscholar_link)
         else:
             print("Professor not Found")
 
@@ -180,11 +177,18 @@ class scholar_bot(bot):
 
 
     def random_paper_insert(self):
-        paper_list = self.mongoClient.get_papers_from_pool()
+        paper_list = self.mongoClient.sample_document(5,'papers')
         if len(paper_list) == 0:
             return False
         self.get_paper_details(paper_list)
         return True
+        
+    def get_papers_by_authorLink(self,authorLink):
+        self.driver.get(authorLink)
+        time.sleep(1)
+        self.check_show_more()
+        paper_list = get_paper_links(self.driver.page_source,self.paperLink)
+        return paper_list
         
     def testground(self):
         self.driver.get('https://scholar.google.com.co/citations?user=J-CWgIkAAAAJ&hl=vi')
