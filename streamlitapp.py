@@ -42,17 +42,31 @@ def main():
     # In your tab section:
     with tab1:
         fig = topic_model.visualize_topics()
-        st.plotly_chart(fig, use_container_width=True)
+        fig.update_layout(
+            plot_bgcolor='white',    # or any color you prefer, e.g. 'lightgrey'
+            paper_bgcolor='orange',
+            font=dict(color='black')# or match your app's background
+        )
+        st.plotly_chart(fig, use_container_width=False)
 
     with tab2:
         fig = topic_model.visualize_heatmap()
+        for annotation in fig.layout.annotations:
+            annotation.font.color = "white"
+        fig.update_layout(
+            plot_bgcolor='white',    # or any color you prefer, e.g. 'lightgrey'
+            paper_bgcolor='orange',
+            font=dict(color='white')# or match your app's background
+        )
+          # or any color you want
+
         st.plotly_chart(fig, use_container_width=True)
 
     with tab3:
         reducer = UMAP(n_neighbors=10, n_components=2, min_dist=0.0, metric='cosine')
         reduced_embeds = reducer.fit_transform(embeddings)
-        fig = topic_model.visualize_documents(content, reduced_embeddings=reduced_embeds)
-        st.plotly_chart(fig, use_container_width=True)
+        fig = topic_model.visualize_document_datamap(content, reduced_embeddings=reduced_embeds)
+        st.pyplot(fig, use_container_width=True)
 
 
 if __name__ == "__main__":
